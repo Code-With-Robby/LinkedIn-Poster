@@ -13,25 +13,70 @@
         textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; resize: vertical; min-height: 100px; }
         input[type="submit"] { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
         input[type="submit"]:hover { background-color: #0056b3; }
-        .post-output { background-color: #e9ecef; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; }
+        .post-output { background-color: #e9ecef; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; min-height: 50px; }
         .post-output h2 { margin-top: 0; color: #333; }
+        .loading { font-style: italic; color: #666; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>LinkedIn Post Generator</h1>
-        <form action="/generate_ui_post" method="POST">
+        <form id="postForm" action="/generate_ui_post" method="POST">
             <label for="topic">Enter Topic for LinkedIn Post:</label>
             <textarea id="topic" name="topic" rows="5" required>{{ topic if topic else '' }}</textarea>
             <input type="submit" value="Generate Post">
         </form>
 
-        {% if post %}
         <div class="post-output">
             <h2>Generated LinkedIn Post:</h2>
-            <p>{{ post }}</p>
+            <p id="generatedPostContent">{% if post %}{{ post }}{% endif %}</p>
         </div>
-        {% endif %}
     </div>
+
+    <script>
+        document.getElementById('postForm').addEventListener('submit', async function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const topic = document.getElementById('topic').value;
+            const outputElement = document.getElementById('generatedPostContent');
+
+            outputElement.innerHTML = '<span class="loading">Generating post...</span>';
+
+            try {
+                const response = await fetch('/stream_linkedin_post', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ topic: topic }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    outputElement.innerText = 'Error: ' + (errorData.error || 'Unknown error');
+                    return;
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let result = '';
+
+                outputElement.innerText = ''; // Clear loading message
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        break;
+                    }
+                    const chunk = decoder.decode(value, { stream: true });
+                    result += chunk;
+                    outputElement.innerText = result;
+                }
+            } catch (error) {
+                console.error('Streaming failed:', error);
+                outputElement.innerText = 'Error: Could not connect to the server or stream data.';
+            }
+        });
+    </script>
 </body>
 </html>
