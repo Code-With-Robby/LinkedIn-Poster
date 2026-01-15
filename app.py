@@ -1,7 +1,7 @@
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template # Added render_template
 
 load_dotenv()
 
@@ -39,6 +39,16 @@ def generate_x_post(topic: str) -> str:
     return post or "Sorry, I couldn't generate a post for that topic."
 
 
+@app.route('/', methods=['GET']) # Modified home route
+def home():
+    return render_template('index.html', post='')
+
+@app.route('/generate_ui_post', methods=['POST']) # New POST route for UI
+def generate_ui_post():
+    topic = request.form['topic']
+    generated_post = generate_x_post(topic)
+    return render_template('index.html', topic=topic, post=generated_post)
+
 @app.route('/generate_x_post', methods=['POST'])
 def generate_x_post_endpoint():
     data = request.get_json()
@@ -48,7 +58,3 @@ def generate_x_post_endpoint():
     topic = data['topic']
     post = generate_x_post(topic)
     return jsonify({"x_post": post})
-
-@app.route('/', methods=['GET'])
-def home():
-    return "Welcome to the LinkedIn Post Generator! Send a POST request to /generate_x_post"
