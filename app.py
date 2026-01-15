@@ -1,3 +1,4 @@
+%%writefile app.py
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -48,3 +49,7 @@ def generate_x_post_endpoint():
     topic = data['topic']
     post = generate_x_post(topic)
     return jsonify({"x_post": post})
+
+@app.route('/', methods=['GET'])
+def home():
+    return "Welcome to the LinkedIn Post Generator! Send a POST request to /generate_x_post"
